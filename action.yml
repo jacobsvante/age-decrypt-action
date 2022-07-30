@@ -1,0 +1,34 @@
+name: Age Decrypt
+description: Decrypt the given file using `age`
+inputs:
+  secret-key:
+    description: The age secret key to decrypt with
+    required: true
+  input-file:
+    description: The file to decrypt
+    required: true
+  output-file:
+    description: Where to place the decrypted file
+    required: true
+  setup:
+    description: Setup age and age-keygen
+    required: false
+    default: "true"
+  version:
+    description: The `age` version to use
+    required: false
+    default: "1.0.0"
+runs:
+  using: composite
+  steps:
+    - if: ${{ inputs.setup == 'true' }}
+      uses: jacobsvante/setup-age-action@v0
+      with:
+        version: ${{ inputs.version }}
+    - shell: bash
+      run: |
+        age \
+          --decrypt \
+          --identity <(echo "${{ inputs.secret-key }}") \
+          --output "${{ inputs.output-file }}" \
+          "${{ inputs.input-file }}"

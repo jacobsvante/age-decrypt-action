@@ -1,0 +1,51 @@
+on:
+  push:
+    branches:
+      - main
+
+env:
+  ACTION_NAME: age-decrypt-action
+
+name: Main
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Test action
+    steps:
+      - uses: actions/checkout@v3
+      - uses: jacobsvante/setup-age-action@main
+      - run: |
+          mkdir -p path/to/my
+          echo secret | age --encrypt --recipient age1uswzj67ev45dluflqgqmltjhmznwsmjhn2y6mukcy8gnvyjdzfuqw73jch > path/to/my/encrypted-file.txt
+        shell: bash
+      # NOTE: Obviously, `main` might refer to a different commit if one is pushed just
+      # after the relevant commit was made. Unfortunately one cannot use `github.sha`
+      # in `uses`.
+      - uses: jacobsvante/age-decrypt-action@main
+        with:
+          # created: 2022-07-30T16:58:18+02:00
+          # public key: age1uswzj67ev45dluflqgqmltjhmznwsmjhn2y6mukcy8gnvyjdzfuqw73jch
+          secret-key: AGE-SECRET-KEY-17TVUUWNHF0QV2M3MP0TG79E6V5XGTG8WPALGQD3D4Y744WPY8J2QM49444
+          input-file: path/to/my/encrypted-file.txt
+          output-file: path/to/my/decrypted-file.txt
+          setup: "false"
+      - run: |
+          [[ "$(cat path/to/my/decrypted-file.txt)" == 'secret' ]]
+        shell: bash
+  release-please:
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: google-github-actions/release-please-action@v3
+        id: release
+        with:
+          release-type: simple
+          package-name: ${{ env.ACTION_NAME }}
+          bump-minor-pre-major: true
+      - uses: actions/checkout@v3
+      - name: Tag major and minor versions in Git
+        if: ${{ steps.release.outputs.release_created }}
+        uses: jacobsvante/tag-major-minor-action@v0
+        with:
+          major: ${{ steps.release.outputs.major }}
+          minor: ${{ steps.release.outputs.minor }}
